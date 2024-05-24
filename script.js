@@ -1,153 +1,122 @@
 //Implement your code here to make it a functional shopping website
 const productContainerEle = document.getElementById("products");
-const cartEle = document.getElementById("cart");
+const cartContainerEle = document.getElementById("cart");
 const cartBtnEle = document.getElementById("cartBtn");
 
-function getAllProducts(url) {
-  return fetch(url).then((response) => {
-    if (!response.status) {
-      throw new Error("error while fetching products");
-    }
-    return response.json();
-  });
-}
-
-async function displayAllProducts() {
-  const productsList = await getAllProducts("https://dummyjson.com/products");
-  productsList.products.forEach((product) => {
-    appendProduct(product.images[0], product.title, product.price);
-  });
-}
-
-function appendProduct(imageUrl, title, price) {
-  const productEle = document.createElement("div");
-  productEle.classList.add("product");
-
-  const imgContainerEle = document.createElement("div");
-  imgContainerEle.classList.add("img-container");
-
-  const imgEle = document.createElement("img");
-  imgEle.src = imageUrl;
-  imgContainerEle.appendChild(imgEle);
-
-  const detailsContainerEle = document.createElement("div");
-  detailsContainerEle.classList.add("details-container");
-
-  const productTitle = document.createElement("p");
-  productTitle.classList.add("p-title");
-  productTitle.textContent = title;
-  detailsContainerEle.appendChild(productTitle);
-
-  const productPrice = document.createElement("p");
-  productPrice.classList.add("p-price");
-  productPrice.textContent = `Price: ${price}`;
-  detailsContainerEle.appendChild(productPrice);
-
-  const cartBtn = document.createElement("button");
-  cartBtn.classList.add("p-btn");
-  cartBtn.textContent = "Add to cart";
-  cartBtn.addEventListener("click");
-
-  detailsContainerEle.appendChild(cartBtn);
-
-  productEle.appendChild(imgContainerEle);
-  productEle.appendChild(detailsContainerEle);
-  productContainerEle.append(productEle);
-  const product = `<div class="product">
-    <div class="img-container">
-        <img src="${imageUrl}" alt="">
-    </div>
-    <div class="details-container">
-        <p class="p-title">${title}</p>
-        <p class="p-price">Price: ${price}</p>
-        <button class="p-btn">Add to cart</button>
-    </div>
-</div>`;
-
-  productContainerEle.insertAdjacentHTML("beforeend", product);
-}
-
-function showCart() {
-  cartEle.classList.toggle("show");
+const cartItems = [];
+let prod;
+let totalPrice = 0;
+//event listner to toggle between cart and homepage
+cartBtnEle.addEventListener("click", () => {
+  cartContainerEle.classList.toggle("show");
   productContainerEle.classList.toggle("no-show");
+  displayCart();
+});
+//to have a list of products in global variable "prod"
+async function getAllProducts() {
+  prod = await fetch("https://dummyjson.com/products");
+  prod = await prod.json();
+  prod = prod.products;
 }
-
-function addToCart() {
-  const detailsContainer = btn.closest(".details-container");
-  if (!detailsContainer) return;
-  const productNameEle = detailsContainer.querySelector(".p-title");
-  const productPriceEle = detailsContainer.querySelector(".p-price");
-  const productName = productNameEle.innerText.trim();
-  const productPrice = parseFloat(
-    productPriceEle.textContent.trim().replace("Price: ", "")
-  );
-  btn.addEventListener("click", updateCart(productName, productPrice));
-}
-
-function updateCart(productName, productPrice) {
-  //check if the product already exist
-  //get a list of elements with className cart_items
-  console.log("inside update cart()");
-  const cartItems = document.getElementsByClassName("cart_item");
-  if (cartItems.length > 0) {
-    let flag = false;
-    cartItems.forEach((item) => {
-      const itemName = item.selectQuery("span")[0];
-      const itemQty = item.selectQuery("span")[2];
-      if (productName === itemName.innerText) {
-        let quantity = parseInt(
-          itemQty.textContent.trim().replace("Qty: ", "")
-        );
-        itemQty.innerText = `Qty: ${quantity + 1}`;
-        flag = true;
-      }
-    });
-    if (!flag) {
-      createNewItem(productName, productPrice);
-    }
+getAllProducts();
+//to add to cartItems list
+function addToCart(id) {
+  const index = cartItems.findIndex((obj) => obj.id === id);
+  if (index !== -1) {
+    cartItems[index].quantity += 1;
   } else {
-    createNewItem(productName, productPrice);
+    cartItems.push({
+      id: id,
+      name: prod[id - 1].title,
+      price: prod[id - 1].price,
+      quantity: 1,
+    });
   }
 }
-
-function createNewItem(productName, productPrice) {
-  const cartItemEle = document.createElement("div");
-  const nameEle = document.createElement("span");
-  const priceEle = document.createElement("span");
-  const qtyEle = document.createElement("span");
-  const decreaseBtnEle = document.createElement("button");
-
-  cartItemEle.classList.add("cart_item");
-  decreaseBtnEle.classList.add("minus-btn");
-
-  nameEle.textContent = productName;
-  cartItemEle.appendChild(nameEle);
-
-  priceEle.textContent = `Price: ${productPrice}`;
-  cartItemEle.appendChild(priceEle);
-
-  qtyEle.textContent = "Qty: 1";
-  cartItemEle.appendChild(qtyEle);
-
-  decreaseBtnEle.textContent = "-";
-  cartItemEle.appendChild(decreaseBtnEle);
-
-  //add event listner to decrease btn
-  decreaseBtnEle.addEventListener("click", () => {
-    const qty = parseInt(qtyEle.textContent.trim().replace("Qty: ", ""));
-    if (qty === 1) {
-      const itemToRemove = qtyEle.closest(".cart_item");
-      cartEle.removeChild(itemToRemove);
-    } else {
-      qtyEle.textContent = `Qty: ${qty - 1}`;
-    }
-  });
-
-  cartEle.appendChild(cartItemEle);
+//to display products in cart
+function displayCart() {
+  console.log("inside display cart");
+  cartContainerEle.innerHTML = "";
+  totalPrice = 0;
+  for (let i of cartItems) {
+    const cartDiv = document.createElement("div");
+    totalPrice += i.price * i.quantity;
+    cartDiv.innerHTML = `<div class="cart_item">
+    <span style="font-size:18px">${i.name}</span>
+    <span>Price: ${i.price}</span>
+    <span>Quant: ${i.quantity}</span>
+    <button class="remove" onClick = "removeItem(${i.id})">-</button>
+    </div>`;
+    cartContainerEle.append(cartDiv);
+  }
 }
-
-document.addEventListener("DOMContentLoaded", () => {
-  displayAllProducts();
-  addToCart();
-  cartBtnEle.addEventListener("click", showCart);
+//to decrease count in cart
+function removeItem(id) {
+  const index = cartItems.findIndex((obj) => obj.id === id);
+  if (index !== -1) {
+    cartItems[index].quantity -= 1;
+    if (cartItems[index].quantity == 0) {
+      cartItems.splice(index, 1);
+    }
+  }
+  displayCart();
+}
+//event listner for checkout button to display total price and thank you message
+document.getElementById("checkoutBtn").addEventListener("click", () => {
+  window.alert(`Thankyou for shopping. Your total price is ${totalPrice}`);
 });
+//to populate all products on homepage
+async function populateProduct() {
+  let productsList = await fetch("https://dummyjson.com/products");
+  productsList = await productsList.json();
+  productsList = productsList.products;
+  for (let product of productsList) {
+    let prodDiv = document.createElement("div");
+    prodDiv.classList.add("main_div");
+    prodDiv.innerHTML = `<div class="product" style = "height:400px; " id=${product.id}>
+    <div class="img_con">
+    <button class="previous" onClick= "prevImage(${product.id})"> << </button>
+    <img src=${product.images[0]} style = "height:200px; width:200px;" id="0"></img>
+    <button id="next" onClick = "nextImage(${product.id})"> >> </button>
+    </div>
+    <div class="card_footer">
+    <h3>${product.title}</h3>
+    <p>Price: $${product.price}</p>
+    <button class="addToCartBtn" onClick ="addToCart(${product.id})">Add to Cart</button>
+    </div>`;
+    document.querySelector(".products").append(prodDiv);
+  }
+}
+populateProduct();
+//for prev image
+async function prevImage(id) {
+  const product = document.getElementById(id);
+  const img = product.querySelector("img");
+  let imgId = img.getAttribute("id");
+  const res = await fetch("https://dummyjson.com/products");
+  const result = await res.json();
+  const images = result.products[id - 1].images;
+  if (imgId == 0) {
+    imgId = images.length - 1;
+  } else {
+    imgId--;
+  }
+  img.setAttribute("src", images[imgId]);
+  img.setAttribute("id", imgId);
+}
+//for next image
+async function nextImage(id) {
+  const product = document.getElementById(id);
+  const img = product.querySelector("img");
+  let imgId = img.getAttribute("id");
+  const res = await fetch("https://dummyjson.com/products");
+  const result = await res.json();
+  const images = result.products[id - 1].images;
+  if (imgId == images.length - 1) {
+    imgId = 0;
+  } else {
+    imgId++;
+  }
+  img.setAttribute("src", images[imgId]);
+  img.setAttribute("id", imgId);
+}
